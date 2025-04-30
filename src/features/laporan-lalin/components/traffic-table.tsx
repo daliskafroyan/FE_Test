@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
     Table,
     TableBody,
@@ -14,6 +14,7 @@ import { useTrafficData, TrafficItem } from '@/api/traffic'
 import { Loader2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { format, parse } from 'date-fns'
 
 export function TrafficTable({ date }: { date?: string }) {
     const [searchTerm, setSearchTerm] = useState('')
@@ -23,9 +24,66 @@ export function TrafficTable({ date }: { date?: string }) {
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
     const [activeTab, setActiveTab] = useState('total-e-toll')
 
+    // Function to parse date from URL
+    const parseDateFromUrl = () => {
+        const urlParams = new URLSearchParams(window.location.search)
+        const urlDate = urlParams.get('date')
+
+        if (urlDate) {
+            try {
+                // Parse date from URL (format: 'yyyy-MM-dd')
+                const parsedDate = parse(urlDate, 'yyyy-MM-dd', new Date())
+                if (!isNaN(parsedDate.getTime())) {
+                    return format(parsedDate, 'yyyy-MM-dd')
+                }
+            } catch (e) {
+                console.error('Error parsing date from URL', e)
+            }
+        }
+
+        // Use provided date or default to today
+        return date || format(new Date(), 'yyyy-MM-dd')
+    }
+
+    // Default to date from URL, provided date, or today
+    const [defaultDate, setDefaultDate] = useState(parseDateFromUrl())
+
+    // Update URL when date changes
+    useEffect(() => {
+        // Update URL without reloading the page
+        const url = new URL(window.location.href)
+        url.searchParams.set('date', defaultDate)
+        window.history.replaceState({}, '', url)
+    }, [defaultDate])
+
+    // Listen for URL changes (browser back/forward buttons or manual URL edits)
+    useEffect(() => {
+        const handleUrlChange = () => {
+            const dateFromUrl = parseDateFromUrl()
+            if (dateFromUrl !== defaultDate) {
+                setDefaultDate(dateFromUrl)
+            }
+        }
+
+        // Add event listener for popstate (back/forward buttons)
+        window.addEventListener('popstate', handleUrlChange)
+
+        // Clean up
+        return () => {
+            window.removeEventListener('popstate', handleUrlChange)
+        }
+    }, [defaultDate])
+
+    // Update defaultDate when prop changes
+    useEffect(() => {
+        if (date && date !== defaultDate) {
+            setDefaultDate(date)
+        }
+    }, [date])
+
     // Query params
     const queryParams = {
-        tanggal: date,
+        tanggal: defaultDate,
         page: currentPage,
         limit: itemsPerPage
     }
@@ -238,6 +296,50 @@ export function TrafficTable({ date }: { date?: string }) {
         return pages
     }
 
+    // Function to export traffic data to CSV
+    const exportTrafficData = () => {
+        if (!trafficResponse || !trafficResponse.data || !trafficResponse.data.rows || !trafficResponse.data.rows.rows) {
+            return;
+        }
+
+        // Get the processed data
+        const tableData = getFilteredSortedData();
+        const totals = calculateTotals();
+        const totalsByRuas = calculateTotalsByRuas();
+
+        // Create CSV headers
+        let csvContent = 'No.,Ruas,Gerbang,Gardu,Hari,Tanggal,Metode Pembayaran,Gol I,Gol II,Gol III,Gol IV,Gol V,Total Lalin\n';
+
+        // Add data rows
+        tableData.forEach((item, index) => {
+            csvContent += `${index + 1},Ruas ${item.ruas},Gerbang ${item.gerbang},${item.gardu},${item.hari},${item.tanggal},${item.metode},${item.gol1},${item.gol2},${item.gol3},${item.gol4},${item.gol5},${item.total}\n`;
+        });
+
+        // Add subtotals by ruas
+        totalsByRuas.forEach((ruasTotal) => {
+            csvContent += `Subtotal,Ruas ${ruasTotal.ruas},,,,,,${ruasTotal.gol1},${ruasTotal.gol2},${ruasTotal.gol3},${ruasTotal.gol4},${ruasTotal.gol5},${ruasTotal.total}\n`;
+        });
+
+        // Add grand total
+        csvContent += `Grand Total,,,,,,${totals.gol1},${totals.gol2},${totals.gol3},${totals.gol4},${totals.gol5},${totals.total}\n`;
+
+        // Generate filename based on date and active tab
+        const dateStr = defaultDate.replace(/-/g, '');
+        const tabStr = activeTab.replace(/-/g, '_');
+        const filename = `traffic_data_${tabStr}_${dateStr}.csv`;
+
+        // Create and trigger download
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     if (isLoading) {
         return (
             <div className="flex h-24 items-center justify-center">
@@ -254,20 +356,7 @@ export function TrafficTable({ date }: { date?: string }) {
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <div className="relative max-w-sm">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        type="search"
-                        placeholder="Search..."
-                        className="pl-8"
-                        value={searchTerm}
-                        onChange={(e) => {
-                            setSearchTerm(e.target.value)
-                            setCurrentPage(1) // Reset to first page on search
-                        }}
-                    />
-                </div>
-                <Button variant="outline">
+                <Button variant="outline" onClick={exportTrafficData}>
                     <Download className="mr-2 h-4 w-4" /> Export
                 </Button>
             </div>

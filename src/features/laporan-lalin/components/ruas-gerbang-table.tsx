@@ -138,7 +138,7 @@ export function RuasGerbangTable() {
     }
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 w-full">
             <div className="flex items-center justify-between">
                 <div className="relative max-w-sm">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -156,8 +156,8 @@ export function RuasGerbangTable() {
                 <AddGerbangDialog />
             </div>
 
-            <div className="rounded-md border">
-                <Table>
+            <div className="rounded-md border w-full">
+                <Table className="w-full">
                     <TableHeader>
                         <TableRow className="bg-slate-50">
                             <TableHead className="w-[60px] text-center">No.</TableHead>
@@ -203,9 +203,6 @@ export function RuasGerbangTable() {
                                 <TableCell className="text-right">
                                     <div className="flex justify-end gap-2">
                                         <EditGerbangDialog gerbang={item} />
-                                        <Button variant="outline" size="icon" className="h-8 w-8">
-                                            <Eye className="h-4 w-4" />
-                                        </Button>
                                         <DeleteGerbangDialog gerbang={item} />
                                     </div>
                                 </TableCell>

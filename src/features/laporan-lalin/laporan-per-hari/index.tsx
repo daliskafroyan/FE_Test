@@ -50,7 +50,7 @@ export default function LaporanPerHari() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full">
       <div className="flex items-center gap-4 mb-6">
         <div className="flex-1">
           <Popover open={open} onOpenChange={setOpen}>
@@ -76,18 +76,6 @@ export default function LaporanPerHari() {
             </PopoverContent>
           </Popover>
         </div>
-        <Button variant="default">Filter</Button>
-        <Button
-          variant="outline"
-          onClick={() => {
-            setDate(undefined)
-            const url = new URL(window.location.href)
-            url.searchParams.delete('date')
-            window.history.replaceState({}, '', url)
-          }}
-        >
-          Reset
-        </Button>
       </div>
 
       <TrafficTable date={date?.toISOString().split('T')[0]} />

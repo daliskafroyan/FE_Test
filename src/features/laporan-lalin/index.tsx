@@ -9,7 +9,6 @@ import { ThemeSwitch } from '@/components/theme-switch'
 export default function LaporanLalin() {
   return (
     <>
-      {/* ===== Top Heading ===== */}
       <Header>
         <Search />
         <div className='ml-auto flex items-center space-x-4'>
